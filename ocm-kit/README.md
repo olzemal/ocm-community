@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/open-component-model/community/ocm-kit)](https://goreportcard.com/report/github.com/open-component-model/community/ocm-kit)
 [![Go Reference](https://pkg.go.dev/badge/github.com/open-component-model/community/ocm-kit.svg)](https://pkg.go.dev/github.com/open-component-model/community/ocm-kit)
 
-A Go library and CLI tool for working with Open Component Model (OCM) Helm values templates.
+A Go library and CLI tool for working with Open Component Model (OCM) Helm values templates and component contracts.
 
 Built on the [OCM v2 SDK](https://github.com/open-component-model/open-component-model)
 (`ocm.software/open-component-model/bindings/go/*`). This project is a community
@@ -407,12 +407,10 @@ The legacy key `opendefense.cloud/helm/values-for` is still recognized for
 backward compatibility with already-published components, but new components
 should use `ext.ocm.software/helm.values-for`.
 
-## Dependencies
+## Component contracts
 
-- `ocm.software/open-component-model/bindings/go/*` - OCM v2 SDK (descriptor, oci, repository, blob, ...)
-- `github.com/Masterminds/sprig/v3` - Template functions
-- `github.com/spf13/cobra` - CLI framework
-- `oras.land/oras-go/v2` - OCI registry client and Docker credential resolution
+See the [component contracts guide](docs/component-contracts.md) for the schema,
+CLI and library usage, examples, and verification behavior.
 
 ## License
 

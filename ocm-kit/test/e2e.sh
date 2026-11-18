@@ -107,7 +107,7 @@ echo "Running ocm-kit CLI with component version ${VERSION}..."
 
 # Test 1: Render with default template
 echo "Test 1: Rendering default Helm values template..."
-OUTPUT1=$(${GO} run cmd/ocm-kit/main.go "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" -r helm-chart)
+OUTPUT1=$(${GO} run ./cmd/ocm-kit "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" -r helm-chart)
 if echo "$OUTPUT1" | grep -q "apiserver:" && \
    echo "$OUTPUT1" | grep -q "controller:" && \
    echo "$OUTPUT1" | grep -q "etcd:" && \
@@ -124,7 +124,7 @@ fi
 
 # Test 2: Render with override template
 echo "Test 2: Rendering override Helm values template..."
-OUTPUT2=$(${GO} run cmd/ocm-kit/main.go "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" -r helm-chart --local-helm-values-template "$SCRIPT_DIR/fixtures/arc/override-values.yaml.tpl")
+OUTPUT2=$(${GO} run ./cmd/ocm-kit "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" -r helm-chart --local-helm-values-template "$SCRIPT_DIR/fixtures/arc/override-values.yaml.tpl")
 if echo "$OUTPUT2" | grep -q "foobar:" && \
    echo "$OUTPUT2" | grep -q "fizzbuzz:" && \
    echo "$OUTPUT2" | grep -q "helloworld:" && \
@@ -147,7 +147,7 @@ fi
 
 # Test 7: Render from the CTF with a ctf:: reference
 echo "Test 7: Rendering from the local CTF (ctf:: reference)..."
-OUTPUT7=$(${GO} run cmd/ocm-kit/main.go "ctf::${CTF_DIR}//${COMPONENT}:${VERSION}" -r helm-chart)
+OUTPUT7=$(${GO} run ./cmd/ocm-kit "ctf::${CTF_DIR}//${COMPONENT}:${VERSION}" -r helm-chart)
 if echo "$OUTPUT7" | grep -Fq "ghcr.io/opendefensecloud/arc-apiserver" && \
    echo "$OUTPUT7" | grep -Fq "ghcr.io/opendefensecloud/arc-controller-manager" && \
    echo "$OUTPUT7" | grep -Fq "quay.io/coreos/etcd"; then
@@ -161,7 +161,7 @@ fi
 
 # Test 8: Render from the bare CTF path, which holds exactly one component version
 echo "Test 8: Rendering from the bare local CTF path..."
-OUTPUT8=$(${GO} run cmd/ocm-kit/main.go "${CTF_DIR}" -r helm-chart)
+OUTPUT8=$(${GO} run ./cmd/ocm-kit "${CTF_DIR}" -r helm-chart)
 if echo "$OUTPUT8" | grep -Fq "ghcr.io/opendefensecloud/arc-apiserver" && \
    echo "$OUTPUT8" | grep -Fq "ghcr.io/opendefensecloud/arc-controller-manager" && \
    echo "$OUTPUT8" | grep -Fq "quay.io/coreos/etcd"; then
@@ -204,7 +204,7 @@ fi
 
 # Test 3: Render default template with relative (localBlob) access
 echo "Test 3: Rendering default Helm values template (relative/localBlob access)..."
-OUTPUT3=$(${GO} run cmd/ocm-kit/main.go "http://${REL_ACCESS_HOST}/my-components//opendefense.cloud/arc:${REL_VERSION}" -r helm-chart)
+OUTPUT3=$(${GO} run ./cmd/ocm-kit "http://${REL_ACCESS_HOST}/my-components//opendefense.cloud/arc:${REL_VERSION}" -r helm-chart)
 if echo "$OUTPUT3" | grep -q "apiserver:" && \
    echo "$OUTPUT3" | grep -q "controller:" && \
    echo "$OUTPUT3" | grep -q "etcd:" && \
@@ -223,7 +223,7 @@ fi
 
 # Test 4: Render override template with relative (localBlob) access
 echo "Test 4: Rendering override Helm values template (relative/localBlob access)..."
-OUTPUT4=$(${GO} run cmd/ocm-kit/main.go "http://${REL_ACCESS_HOST}/my-components//opendefense.cloud/arc:${REL_VERSION}" -r helm-chart --local-helm-values-template "$SCRIPT_DIR/fixtures/arc/override-values.yaml.tpl")
+OUTPUT4=$(${GO} run ./cmd/ocm-kit "http://${REL_ACCESS_HOST}/my-components//opendefense.cloud/arc:${REL_VERSION}" -r helm-chart --local-helm-values-template "$SCRIPT_DIR/fixtures/arc/override-values.yaml.tpl")
 if echo "$OUTPUT4" | grep -q "foobar:" && \
    echo "$OUTPUT4" | grep -q "fizzbuzz:" && \
    echo "$OUTPUT4" | grep -q "helloworld:" && \
@@ -242,7 +242,7 @@ fi
 
 # Test 5: Render with pull secrets file
 echo "Test 5: Rendering with pull secrets file..."
-OUTPUT5=$(${GO} run cmd/ocm-kit/main.go "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" \
+OUTPUT5=$(${GO} run ./cmd/ocm-kit "http://localhost:5000/my-components//opendefense.cloud/arc:${VERSION}" \
   --local-helm-values-template "$SCRIPT_DIR/fixtures/arc/pull-secrets-values.yaml.tpl" \
   --pull-secrets-file "$SCRIPT_DIR/fixtures/arc/pull-secrets.json")
 if [ "$(echo "$OUTPUT5" | grep -c -- "- name: regcred")" -eq 3 ] && \
@@ -270,7 +270,7 @@ echo "Create local CTF with embedded example component version and transfer CV t
 (cd "${EMBEDDED_SRC}" && ${OCM} add cv --repository ctf::${TEMP_CTF})
 ${OCM} transfer cv --copy-resources ctf::"${TEMP_CTF}//${EMBEDDED_CV_NAME}" http://localhost:5000/my-components
 echo "Call ocm-kit ..."
-OUTPUT6=$(${GO} run cmd/ocm-kit/main.go "http://localhost:5000/my-components//${EMBEDDED_CV_NAME}:${EMBEDDED_CV_VERSION}" -r helm-chart | tr -d '\n')
+OUTPUT6=$(${GO} run ./cmd/ocm-kit "http://localhost:5000/my-components//${EMBEDDED_CV_NAME}:${EMBEDDED_CV_VERSION}" -r helm-chart | tr -d '\n')
 if echo "$OUTPUT6" | grep -q "localhost:5000/my-components/component-descriptors/${EMBEDDED_CV_NAME}\(:[a-zA-Z0-9_.-]\{0,127\}\)\?@sha256:[A-Fa-f0-9]\{64\}";
 then
 	if ! OUTPUT6_1=$(${DOCKER} run "$OUTPUT6"); then
@@ -291,7 +291,7 @@ fi
 # Test 9: Render the embedded OCI image straight from the CTF. A CTF has no
 # registry host, so the component-local image gets the placeholder host.
 echo "Test 9: Rendering embedded OCI image from the local CTF..."
-OUTPUT9=$(${GO} run cmd/ocm-kit/main.go "ctf::${TEMP_CTF}//${EMBEDDED_CV_NAME}:${EMBEDDED_CV_VERSION}" -r helm-chart)
+OUTPUT9=$(${GO} run ./cmd/ocm-kit "ctf::${TEMP_CTF}//${EMBEDDED_CV_NAME}:${EMBEDDED_CV_VERSION}" -r helm-chart)
 if echo "$OUTPUT9" | grep -Eq "REGISTRY/component-descriptors/${EMBEDDED_CV_NAME}:${EMBEDDED_CV_VERSION}@sha256:[0-9a-f]{64}"; then
 	echo "✓ Test 9 passed: placeholder-host reference ($OUTPUT9) was returned"
 else

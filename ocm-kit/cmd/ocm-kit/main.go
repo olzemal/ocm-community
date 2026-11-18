@@ -50,6 +50,8 @@ Component-local images from a CTF render with the placeholder host REGISTRY, bec
 	rootCmd.Flags().StringVarP(&opts.localHelmValuesTemplate, "local-helm-values-template", "f", "", "Path to a local Helm values template file (overrides component template)")
 	rootCmd.Flags().StringVarP(&opts.pullSecretsFilePath, "pull-secrets-file", "p", "", "Path to a pull secrets JSON file mapping registries to Kubernetes secret names")
 
+	rootCmd.AddCommand(newContractCommand())
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

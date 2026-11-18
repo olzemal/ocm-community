@@ -8,17 +8,18 @@ requires:
     - group: cert-manager.io
       kind: Issuer
       versions: [v1]
+    - group: database.example.org
+      kind: PostgresCluster
+      versions: [v1]
   features:
     - capability: cert-manager.io/controller
-      hint: Install the cert-manager controller before this workload.
+      hint: Provided by cert-manager.
+    - capability: database.example.org/postgresql
+      hint: Provided by the database provider.
 provides:
-  apis:
-    - group: arc.opendefense.cloud
-      kind: Order
-      versions: [v1alpha1]
   features:
-    - capability: opendefense.cloud/arc
+    - capability: example.org/application
       endpoints:
-        - name: api
+        - name: web
           port: 443
           protocol: HTTPS
