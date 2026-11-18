@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ComponentContract
+provides:
+  apis:
+    - group: cert-manager.io
+      kind: Certificate
+      versions: [v1]
+    - group: cert-manager.io
+      kind: Issuer
+      versions: [v1]
+    - group: cert-manager.io
+      kind: ClusterIssuer
+      versions: [v1]
+  features:
+    - capability: cert-manager.io/controller
+      hint: Provides the controller and API definitions; issuers require configuration.

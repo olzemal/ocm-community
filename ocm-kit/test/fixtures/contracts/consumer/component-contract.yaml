@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ComponentContract
+requires:
+  apis:
+    - group: cert-manager.io
+      kind: Certificate
+      versions: [v1]
+    - group: cert-manager.io
+      kind: Issuer
+      versions: [v1]
+  features:
+    - capability: cert-manager.io/controller
+      hint: Install the cert-manager controller before this workload.
+provides:
+  apis:
+    - group: arc.opendefense.cloud
+      kind: Order
+      versions: [v1alpha1]
+  features:
+    - capability: opendefense.cloud/arc
+      endpoints:
+        - name: api
+          port: 443
+          protocol: HTTPS
