@@ -15,13 +15,13 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	c, err := Parse(fixture(t, "consumer"))
+	c, err := Parse(fixture(t, "application"))
 	require.NoError(t, err)
 	require.Empty(t, c.Requires.Nodes)
-	require.Len(t, c.Requires.APIs, 2)
+	require.Len(t, c.Requires.APIs, 3)
 	require.Equal(t, "cert-manager.io/controller", c.Requires.Features[0].Capability)
 	require.Equal(t, Endpoint{
-		Name:     "api",
+		Name:     "web",
 		Port:     443,
 		Protocol: "HTTPS",
 	}, c.Provides.Features[0].Endpoints[0])
@@ -212,14 +212,14 @@ func TestDiscoveryAndFetch(t *testing.T) {
 	}
 	repo := &compver.FakeRepository{
 		Descriptor: desc,
-		Blobs:      map[string][]byte{"contract": fixture(t, "consumer")},
+		Blobs:      map[string][]byte{"contract": fixture(t, "application")},
 	}
 	res, err := FindContract(desc)
 	require.NoError(t, err)
 	require.Equal(t, "contract", res.Name)
 	c, err := GetContract(t.Context(), repo, desc)
 	require.NoError(t, err)
-	require.Len(t, c.Requires.APIs, 2)
+	require.Len(t, c.Requires.APIs, 3)
 	delete(repo.Blobs, "contract")
 	_, err = FetchContract(t.Context(), repo, desc, res)
 	require.ErrorIs(t, err, fs.ErrNotExist)

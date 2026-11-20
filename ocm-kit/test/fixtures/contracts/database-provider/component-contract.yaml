@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ComponentContract
+provides:
+  apis:
+    - group: database.example.org
+      kind: PostgresCluster
+      versions: [v1]
+  features:
+    - capability: database.example.org/postgresql
+      hint: Provides the PostgreSQL operator and its cluster API.

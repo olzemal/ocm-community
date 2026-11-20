@@ -27,7 +27,7 @@ for ((attempt = 0; attempt < 30; attempt++)); do
 done
 curl -fsS "http://${REGISTRY_ADDRESS}/v2/" >/dev/null
 
-for role in consumer provider; do
+for role in application cert-manager database-provider; do
   (
     cd "${SCRIPT_DIR}/fixtures/contracts/${role}"
     "${OCM}" add component-version --repository "${CONTRACT_TMP}/${role}" --constructor component-constructor.yaml
@@ -36,22 +36,32 @@ for role in consumer provider; do
     "ctf::${CONTRACT_TMP}/${role}//example.org/contract-${role}:1.0.0" "${REGISTRY}" --copy-resources
 done
 
-CONSUMER_REF="${REGISTRY}//example.org/contract-consumer:1.0.0"
-PROVIDER_REF="${REGISTRY}//example.org/contract-provider:1.0.0"
-"${CONTRACT_TMP}/ocm-kit" contract show "${CONTRACT_TMP}/consumer" -o yaml >"${CONTRACT_TMP}/local.yaml"
-"${CONTRACT_TMP}/ocm-kit" contract show "${CONSUMER_REF}" -o yaml >"${CONTRACT_TMP}/remote.yaml"
+APPLICATION_REF="${REGISTRY}//example.org/contract-application:1.0.0"
+CERT_MANAGER_REF="${REGISTRY}//example.org/contract-cert-manager:1.0.0"
+DATABASE_PROVIDER_REF="${REGISTRY}//example.org/contract-database-provider:1.0.0"
+"${CONTRACT_TMP}/ocm-kit" contract show "${CONTRACT_TMP}/application" -o yaml >"${CONTRACT_TMP}/local.yaml"
+"${CONTRACT_TMP}/ocm-kit" contract show "${APPLICATION_REF}" -o yaml >"${CONTRACT_TMP}/remote.yaml"
 diff -u "${CONTRACT_TMP}/local.yaml" "${CONTRACT_TMP}/remote.yaml"
-"${CONTRACT_TMP}/ocm-kit" contract show "oci::${CONSUMER_REF}" -o yaml >"${CONTRACT_TMP}/typed.yaml"
+"${CONTRACT_TMP}/ocm-kit" contract show "oci::${APPLICATION_REF}" -o yaml >"${CONTRACT_TMP}/typed.yaml"
 diff -u "${CONTRACT_TMP}/local.yaml" "${CONTRACT_TMP}/typed.yaml"
 
-"${CONTRACT_TMP}/ocm-kit" contract resolve "${CONSUMER_REF}" --against "${PROVIDER_REF}" \
-  -o yaml >"${CONTRACT_TMP}/result.yaml"
-grep -q '^unverified: \[\]$' "${CONTRACT_TMP}/result.yaml"
-grep -q '^missing: \[\]$' "${CONTRACT_TMP}/result.yaml"
-grep -q "component:${PROVIDER_REF}" "${CONTRACT_TMP}/result.yaml"
-"${CONTRACT_TMP}/ocm-kit" contract verify "${CONSUMER_REF}" --against "${PROVIDER_REF}"
-
-"${CONTRACT_TMP}/ocm-kit" contract resolve "${CONSUMER_REF}" --against "${CONSUMER_REF}" \
+"${CONTRACT_TMP}/ocm-kit" contract resolve "${APPLICATION_REF}" --against "${APPLICATION_REF}" \
   >"${CONTRACT_TMP}/missing.txt"
 grep -q '\[MISSING\]' "${CONTRACT_TMP}/missing.txt"
+
+"${CONTRACT_TMP}/ocm-kit" contract verify "${APPLICATION_REF}" --against "${CERT_MANAGER_REF}" \
+  >"${CONTRACT_TMP}/partial.txt"
+grep -q '3 satisfied, 2 missing, 0 unverified, 0 probe errors.' "${CONTRACT_TMP}/partial.txt"
+"${CONTRACT_TMP}/ocm-kit" contract verify "${APPLICATION_REF}" \
+  --against "${CERT_MANAGER_REF}" --against "${DATABASE_PROVIDER_REF}" \
+  >"${CONTRACT_TMP}/multiple-providers.txt"
+grep -q '5 satisfied, 0 missing, 0 unverified, 0 probe errors.' "${CONTRACT_TMP}/multiple-providers.txt"
+grep -Fq "component:${CERT_MANAGER_REF}" "${CONTRACT_TMP}/multiple-providers.txt"
+grep -Fq "component:${DATABASE_PROVIDER_REF}" "${CONTRACT_TMP}/multiple-providers.txt"
+"${CONTRACT_TMP}/ocm-kit" contract verify "${APPLICATION_REF}" \
+  --against "${CERT_MANAGER_REF}" --against "${DATABASE_PROVIDER_REF}" -o yaml \
+  >"${CONTRACT_TMP}/multiple-providers.yaml"
+grep -q '^missing: \[\]$' "${CONTRACT_TMP}/multiple-providers.yaml"
+grep -Fq "component:${CERT_MANAGER_REF}" "${CONTRACT_TMP}/multiple-providers.yaml"
+grep -Fq "component:${DATABASE_PROVIDER_REF}" "${CONTRACT_TMP}/multiple-providers.yaml"
 echo "Component contract CTF and registry tests passed."

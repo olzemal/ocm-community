@@ -106,7 +106,7 @@ func TestVerifyAllRequirementKinds(t *testing.T) {
 }
 
 func TestCatalogProbe(t *testing.T) {
-	provider, err := Parse(fixture(t, "provider"))
+	provider, err := Parse(fixture(t, "cert-manager"))
 	require.NoError(t, err)
 	// Provider requirements are schema-validated, but matching uses only their provides.
 	provider.Requires = Requires{
@@ -114,7 +114,18 @@ func TestCatalogProbe(t *testing.T) {
 		Nodes:      []NodeRequirement{{Count: 999, CPU: "128"}},
 		Features:   []FeatureRequirement{{Capability: "example.org/not-in-catalog"}},
 	}
-	probe, err := NewCatalogProbe([]Provider{{Ref: "example.org/cert-manager:1.0.0", Contract: provider}})
+	databaseProvider, err := Parse(fixture(t, "database-provider"))
+	require.NoError(t, err)
+	probe, err := NewCatalogProbe([]Provider{
+		{
+			Ref:      "example.org/cert-manager:1.0.0",
+			Contract: provider,
+		},
+		{
+			Ref:      "example.org/database-provider:1.0.0",
+			Contract: databaseProvider,
+		},
+	})
 	require.NoError(t, err)
 	t.Run("cancelled context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
@@ -149,27 +160,27 @@ func TestCatalogProbe(t *testing.T) {
 		_, _, err = probe.Satisfy(t.Context(), Requirement{Kind: kind})
 		require.ErrorIs(t, err, ErrProbeNotApplicable)
 	}
-	consumer, err := Parse(fixture(t, "consumer"))
+	application, err := Parse(fixture(t, "application"))
 	require.NoError(t, err)
-	result, err := Verify(t.Context(), consumer, probe)
+	result, err := Verify(t.Context(), application, probe)
 	require.NoError(t, err)
-	require.Len(t, result.Satisfied, 3)
+	require.Len(t, result.Satisfied, 5)
 	require.Empty(t, result.Unverified)
 	require.Empty(t, result.Missing)
 	// Cluster requirements remain visible without being evaluated against a cluster.
-	consumer.Requires.Kubernetes = &KubernetesRequirement{Version: ">=99.0.0"}
-	consumer.Requires.Cluster = &ClusterRequirement{CPU: "1000000"}
-	consumer.Requires.Nodes = []NodeRequirement{{Count: 999, Memory: "16Ti"}}
-	result, err = Verify(t.Context(), consumer, probe)
+	application.Requires.Kubernetes = &KubernetesRequirement{Version: ">=99.0.0"}
+	application.Requires.Cluster = &ClusterRequirement{CPU: "1000000"}
+	application.Requires.Nodes = []NodeRequirement{{Count: 999, Memory: "16Ti"}}
+	result, err = Verify(t.Context(), application, probe)
 	require.NoError(t, err)
-	require.Len(t, result.Satisfied, 3)
+	require.Len(t, result.Satisfied, 5)
 	require.Len(t, result.Unverified, 3)
 	require.Equal(t, []RequirementKind{Kubernetes, Cluster, Node}, []RequirementKind{
 		result.Unverified[0].Kind, result.Unverified[1].Kind, result.Unverified[2].Kind,
 	})
 	require.Empty(t, result.Missing)
-	consumer.Requires.Nodes[0].Count = -1
-	_, err = Verify(t.Context(), consumer, probe)
+	application.Requires.Nodes[0].Count = -1
+	_, err = Verify(t.Context(), application, probe)
 	require.ErrorContains(t, err, "requires.nodes[0].count")
 	invalid, err := NewCatalogProbe([]Provider{{Ref: "bad", Contract: nil}})
 	require.ErrorContains(t, err, "provider")

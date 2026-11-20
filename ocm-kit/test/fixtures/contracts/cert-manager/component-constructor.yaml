@@ -1,4 +1,4 @@
-name: example.org/contract-consumer
+name: example.org/contract-cert-manager
 version: 1.0.0
 provider:
   name: example.org

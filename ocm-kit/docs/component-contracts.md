@@ -10,24 +10,41 @@ The first iteration matches `requires.apis` and `requires.features` against othe
 components' `provides` declarations. It works entirely with component content;
 it does not connect to Kubernetes or require a kubeconfig.
 
-The [consumer](../test/fixtures/contracts/consumer) and
-[provider](../test/fixtures/contracts/provider) fixtures include contracts and OCM
-constructors. To try them from local CTFs, run these commands from the repository root:
+The fixtures include an [application](../test/fixtures/contracts/application),
+[cert-manager](../test/fixtures/contracts/cert-manager), and a
+[database provider](../test/fixtures/contracts/database-provider). The application
+requires certificate APIs and a controller from cert-manager, plus a PostgreSQL
+API and capability from the database provider.
+
+Build a separate local CTF for each component from the repository root:
 
 ```bash
-(cd test/fixtures/contracts/consumer && ocm add component-version --repository ./ctf --constructor component-constructor.yaml)
-(cd test/fixtures/contracts/provider && ocm add component-version --repository ./ctf --constructor component-constructor.yaml)
+for fixture in application cert-manager database-provider; do
+  (cd "test/fixtures/contracts/$fixture" && \
+    ocm add component-version --repository ./ctf --constructor component-constructor.yaml)
+done
 
-ocm-kit contract show test/fixtures/contracts/consumer/ctf -o yaml
-ocm-kit contract verify test/fixtures/contracts/consumer/ctf \
-  --against test/fixtures/contracts/provider/ctf
+ocm-kit contract show test/fixtures/contracts/application/ctf -o yaml
+
+# Three certificate requirements are satisfied; two database requirements are missing.
+ocm-kit contract verify test/fixtures/contracts/application/ctf \
+  --against test/fixtures/contracts/cert-manager/ctf
+
+# All five requirements are satisfied across the two provider components.
+ocm-kit contract verify test/fixtures/contracts/application/ctf \
+  --against test/fixtures/contracts/cert-manager/ctf \
+  --against test/fixtures/contracts/database-provider/ctf
 ```
 
 The commands also accept the same OCI and explicit CTF references as Helm
 rendering. Both commands default to readable text; `-o yaml` (or `--output yaml`)
 prints the contract or evaluation report as YAML. The existing `ocm-kit <ref>`
-rendering command is preserved.
-`resolve` is an alias for `verify`; both check requirements against provider contracts.
+rendering command is preserved. `resolve` is an alias for `verify`.
+
+The reports show which provider satisfies each requirement. Try leaving out either
+provider or editing the database API's version and rebuilding its CTF to see the
+matching behavior. These fixtures are declarations only; they do not install
+cert-manager, PostgreSQL, or the application.
 
 For library callers, `compver.Open(ctx, ref)` loads the repository and descriptor
 for both Helm values and contracts; close the returned component when finished.

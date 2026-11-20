@@ -31,7 +31,7 @@ func writeContractsCTF(t *testing.T) string {
 	require.NoError(t, err)
 	repo, err := oci.NewRepository(ocictf.WithCTF(ocictf.NewFromCTF(ctf.NewFileSystemCTF(fs))), oci.WithTempDir(t.TempDir()))
 	require.NoError(t, err)
-	for _, name := range []string{"consumer", "consumer-unverifiable", "provider", "without-contract"} {
+	for _, name := range []string{"application", "application-unverifiable", "cert-manager", "database-provider", "without-contract"} {
 		content := []byte("greeting: {{ .Component.Name }}")
 		label := descriptor.Label{Name: helmvalues.LabelHelmValuesFor, Value: json.RawMessage(`"my-chart"`)}
 		if name != "without-contract" {
@@ -39,7 +39,7 @@ func writeContractsCTF(t *testing.T) string {
 			require.NoError(t, err)
 			label = descriptor.Label{Name: contract.LabelName, Value: json.RawMessage(`"v1"`)}
 		}
-		if name == "consumer-unverifiable" {
+		if name == "application-unverifiable" {
 			c, err := contract.Parse(content)
 			require.NoError(t, err)
 			c.Requires.Kubernetes = &contract.KubernetesRequirement{Version: ">=99.0.0"}
@@ -86,42 +86,43 @@ func runCLI(t *testing.T, args ...string) (stdout, stderr string, code int) {
 func TestContractCLI(t *testing.T) {
 	dir := writeContractsCTF(t)
 	ref := func(name string) string { return "ctf::" + dir + "//example.org/contract-" + name + ":1.0.0" }
-	consumer, provider := ref("consumer"), ref("provider")
+	application, certManager := ref("application"), ref("cert-manager")
+	databaseProvider := ref("database-provider")
 	t.Run("show text", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "show", consumer)
+		out, stderr, code := runCLI(t, "contract", "show", application)
 		require.Zero(t, code, stderr)
-		require.Contains(t, out, "Contract for "+consumer)
+		require.Contains(t, out, "Contract for "+application)
 		require.Contains(t, out, "requires:")
 		require.Contains(t, out, "provides:")
 	})
 	t.Run("show YAML", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "show", consumer, "-oyaml")
+		out, stderr, code := runCLI(t, "contract", "show", application, "-oyaml")
 		require.Zero(t, code, stderr)
 		require.Contains(t, out, "apiVersion: "+contract.APIVersion)
 		_, err := contract.Parse([]byte(out))
 		require.NoError(t, err)
 	})
 	t.Run("OCM descriptor prefix", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "show", "ctf::"+dir+"/component-descriptors/example.org/contract-consumer:1.0.0", "-o", "yaml")
+		out, stderr, code := runCLI(t, "contract", "show", "ctf::"+dir+"/component-descriptors/example.org/contract-application:1.0.0", "-o", "yaml")
 		require.Zero(t, code, stderr)
 		_, err := contract.Parse([]byte(out))
 		require.NoError(t, err)
 	})
 	t.Run("catalog matches APIs and features", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "resolve", consumer, "--against", provider, "-o", "yaml")
+		out, stderr, code := runCLI(t, "contract", "resolve", application, "--against", certManager, "--against", databaseProvider, "-o", "yaml")
 		require.Zero(t, code, stderr)
 		var result map[string][]json.RawMessage
 		require.NoError(t, yaml.Unmarshal([]byte(out), &result))
-		require.Len(t, result["satisfied"], 3)
+		require.Len(t, result["satisfied"], 5)
 		require.Empty(t, result["unverified"])
 		require.Empty(t, result["missing"])
-		require.Contains(t, out, "component:"+provider)
-		aliasOut, aliasErr, aliasCode := runCLI(t, "contract", "verify", consumer, "--against", provider, "-o", "yaml")
+		require.Contains(t, out, "component:"+certManager)
+		aliasOut, aliasErr, aliasCode := runCLI(t, "contract", "verify", application, "--against", certManager, "--against", databaseProvider, "-o", "yaml")
 		require.Equal(t, code, aliasCode, aliasErr)
 		require.Equal(t, out, aliasOut)
 	})
 	t.Run("catalog leaves unsupported requirements unverified", func(t *testing.T) {
-		mixed := ref("consumer-unverifiable")
+		mixed := ref("application-unverifiable")
 		out, stderr, code := runCLI(t, "contract", "show", mixed, "-o", "yaml")
 		require.Zero(t, code, stderr)
 		c, err := contract.Parse([]byte(out))
@@ -129,7 +130,7 @@ func TestContractCLI(t *testing.T) {
 		require.Equal(t, ">=99.0.0", c.Requires.Kubernetes.Version)
 		require.Equal(t, "1000000", c.Requires.Cluster.CPU)
 		require.Equal(t, 999, c.Requires.Nodes[0].Count)
-		out, stderr, code = runCLI(t, "contract", "verify", mixed, "--against", provider, "-o", "yaml")
+		out, stderr, code = runCLI(t, "contract", "verify", mixed, "--against", certManager, "--against", databaseProvider, "-o", "yaml")
 		require.Zero(t, code, stderr)
 		var result struct {
 			Satisfied  []json.RawMessage `json:"satisfied"`
@@ -140,7 +141,7 @@ func TestContractCLI(t *testing.T) {
 			Errors  []json.RawMessage `json:"errors"`
 		}
 		require.NoError(t, yaml.Unmarshal([]byte(out), &result))
-		require.Len(t, result.Satisfied, 3)
+		require.Len(t, result.Satisfied, 5)
 		require.Len(t, result.Unverified, 3)
 		require.Equal(t, "kubernetes", result.Unverified[0].Kind)
 		require.Equal(t, "cluster", result.Unverified[1].Kind)
@@ -149,12 +150,12 @@ func TestContractCLI(t *testing.T) {
 		require.Empty(t, result.Errors)
 	})
 	t.Run("unverified requirements are reported", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "verify", ref("consumer-unverifiable"), "--against", provider)
+		out, stderr, code := runCLI(t, "contract", "verify", ref("application-unverifiable"), "--against", certManager, "--against", databaseProvider)
 		require.Zero(t, code, stderr)
 		require.Contains(t, out, "[UNVERIFIED]")
 	})
 	t.Run("missing requirements", func(t *testing.T) {
-		out, stderr, code := runCLI(t, "contract", "resolve", consumer, "--against", consumer)
+		out, stderr, code := runCLI(t, "contract", "resolve", application, "--against", application)
 		require.Zero(t, code, stderr)
 		require.Contains(t, out, "[MISSING]")
 	})
@@ -166,14 +167,14 @@ func TestContractCLI(t *testing.T) {
 	})
 	for _, args := range [][]string{
 		{"contract", "show"},
-		{"contract", "verify", consumer},
-		{"contract", "resolve", consumer},
-		{"contract", "show", consumer, "-o", "xml"},
-		{"contract", "show", consumer, "-o", "json"},
-		{"contract", "verify", consumer, "--against", provider, "--fail-on-unverified=false"},
-		{"contract", "verify", consumer, "--against", provider, "--fail-on-probe-error=false"},
-		{"contract", "show", consumer, "--unknown"},
-		{"contract", "verify", consumer, "--kubeconfig", "unused"},
+		{"contract", "verify", application},
+		{"contract", "resolve", application},
+		{"contract", "show", application, "-o", "xml"},
+		{"contract", "show", application, "-o", "json"},
+		{"contract", "verify", application, "--against", certManager, "--against", databaseProvider, "--fail-on-unverified=false"},
+		{"contract", "verify", application, "--against", certManager, "--against", databaseProvider, "--fail-on-probe-error=false"},
+		{"contract", "show", application, "--unknown"},
+		{"contract", "verify", application, "--kubeconfig", "unused"},
 	} {
 		t.Run(fmt.Sprint(args), func(t *testing.T) {
 			_, _, code := runCLI(t, args...)

@@ -1,4 +1,4 @@
-name: example.org/contract-provider
+name: example.org/contract-application
 version: 1.0.0
 provider:
   name: example.org
