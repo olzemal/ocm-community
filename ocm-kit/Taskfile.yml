@@ -69,6 +69,13 @@ tasks:
       - ${DOCKER:-docker} rm -f zot-registry
       - ${DOCKER:-docker} volume rm zot-data
 
+  e2e/contracts:
+    desc: Test component contracts against local CTFs and an isolated zot registry
+    deps: [tools/ocm]
+    env:
+      OCM: '{{ .OCM }}'
+    cmd: bash ./test/contracts-e2e.sh
+
   clean:
     desc: Remove tmp/ (built binary and tools)
     cmd: rm -rf {{ .TASKFILE_DIR }}/tmp

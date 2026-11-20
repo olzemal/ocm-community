@@ -1,0 +1,16 @@
+name: example.org/contract-cert-manager
+version: 1.0.0
+provider:
+  name: example.org
+resources:
+  - name: component-contract
+    version: 1.0.0
+    type: yaml
+    relation: local
+    labels:
+      - name: ext.ocm.software/component-contract
+        value: v1
+    input:
+      type: file/v1
+      path: component-contract.yaml
+      mediaType: application/vnd.ext.ocm.software.component-contract+yaml

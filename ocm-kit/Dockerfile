@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build go mod download
 # Copy the go source
 COPY cmd/ cmd/
 COPY compver/ compver/
+COPY contract/ contract/
 COPY helmvalues/ helmvalues/
 
 ARG TARGETOS
