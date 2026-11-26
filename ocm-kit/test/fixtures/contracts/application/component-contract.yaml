@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ComponentContract
+requires:
+  apis:
+    - group: cert-manager.io
+      kind: Certificate
+      versions: [v1]
+    - group: cert-manager.io
+      kind: Issuer
+      versions: [v1]
+    - group: database.example.org
+      kind: PostgresCluster
+      versions: [v1]
+  features:
+    - capability: cert-manager.io/controller
+      hint: Provided by cert-manager.
+    - capability: database.example.org/postgresql
+      hint: Provided by the database provider.
+provides:
+  features:
+    - capability: example.org/application
+      endpoints:
+        - name: web
+          port: 443
+          protocol: HTTPS
